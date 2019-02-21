@@ -75,8 +75,8 @@ var contextCmd = &cobra.Command{
 }
 
 func GetContext() {
-	user := os.Getenv("USER")
-	dat, err := ioutil.ReadFile(fmt.Sprintf("/home/%s/.kube/config", user))
+	home := os.Getenv("HOME")
+	dat, err := ioutil.ReadFile(fmt.Sprintf("%s/.kube/config", home))
 	if err != nil {
 		fmt.Errorf("%s", err)
 	}
@@ -84,8 +84,8 @@ func GetContext() {
 }
 
 func ReplaceContext(name string) {
-	user := os.Getenv("USER")
-	file := fmt.Sprintf("/home/%s/.kube/config", user)
+	home := os.Getenv("HOME")
+	file := fmt.Sprintf("%s/.kube/config", home)
 	dat, err := ioutil.ReadFile(file)
 	if err != nil {
 		log.Println(err)
