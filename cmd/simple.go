@@ -2,12 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"io/ioutil"
-	"log"
-	"os"
 
-	"github.com/ghodss/yaml"
-	config "github.com/onuryartasi/example-cli/types"
 	"github.com/spf13/cobra"
 	"gopkg.in/AlecAivazis/survey.v1"
 )
@@ -16,7 +11,6 @@ var answers = struct {
 	Name  string
 	Color string
 }{}
-var conf config.KubeConfig
 
 // the questions to ask
 var simpleQs = []*survey.Question{
@@ -40,7 +34,6 @@ var simpleQs = []*survey.Question{
 
 func init() {
 	rootCmd.AddCommand(simpleCmd)
-	rootCmd.AddCommand(contextCmd)
 }
 
 var simpleCmd = &cobra.Command{
@@ -58,41 +51,4 @@ var simpleCmd = &cobra.Command{
 		// print the answers
 		fmt.Printf("%s chose %s.\n", answers.Name, answers.Color)
 	},
-}
-
-var contextCmd = &cobra.Command{
-	Use:   "context",
-	Short: "Kubernetes context",
-	Run: func(cmd *cobra.Command, args []string) {
-		GetContext()
-		var names = []string{}
-		for _, value := range conf.Contexts {
-			names = append(names, value.Name)
-		}
-		qs := []*survey.Question{
-			{Name: "context",
-				Prompt: &survey.Select{
-					Message: "Choose a context:",
-					Options: names,
-				},
-				Transform: survey.Title,
-				Validate:  survey.Required,
-			}}
-		var selectedNames string
-		err := survey.Ask(qs, &selectedNames)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("Choose Context: %s", selectedNames)
-
-	},
-}
-
-func GetContext() {
-	user := os.Getenv("USER")
-	dat, err := ioutil.ReadFile(fmt.Sprintf("/home/%s/.kube/config", user))
-	if err != nil {
-		fmt.Errorf("%s", err)
-	}
-	err = yaml.Unmarshal(dat, &conf)
 }
