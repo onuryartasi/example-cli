@@ -19,6 +19,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"regexp"
 
 	"github.com/ghodss/yaml"
 	config "github.com/onuryartasi/example-cli/types"
@@ -27,6 +28,20 @@ import (
 )
 
 var conf config.KubeConfig
+
+func init() {
+	rootCmd.AddCommand(contextCmd)
+
+	// Here you will define your flags and configuration settings.
+
+	// Cobra supports Persistent Flags which will work for this command
+	// and all subcommands, e.g.:
+	// contextCmd.PersistentFlags().String("foo", "", "A help for foo")
+
+	// Cobra supports local flags which will only run when this command
+	// is called directly, e.g.:
+	// contextCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+}
 
 // contextCmd represents the context command
 var contextCmd = &cobra.Command{
@@ -44,31 +59,19 @@ var contextCmd = &cobra.Command{
 					Message: "Choose a context:",
 					Options: names,
 				},
-				Transform: survey.Title,
-				Validate:  survey.Required,
+				Validate: survey.Required,
 			}}
 		var selectedNames string
 		err := survey.Ask(qs, &selectedNames)
+		fmt.Println(selectedNames)
 		if err != nil {
 			log.Fatal(err)
 		}
 		fmt.Printf("Choose Context: %s", selectedNames)
+		ReplaceContext(selectedNames)
 
 	},
-}
-
-func init() {
-	rootCmd.AddCommand(contextCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// contextCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// contextCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	Aliases: []string{"ctx", "cx"},
 }
 
 func GetContext() {
@@ -78,4 +81,19 @@ func GetContext() {
 		fmt.Errorf("%s", err)
 	}
 	err = yaml.Unmarshal(dat, &conf)
+}
+
+func ReplaceContext(name string) {
+	user := os.Getenv("USER")
+	file := fmt.Sprintf("/home/%s/.kube/config", user)
+	dat, err := ioutil.ReadFile(file)
+	if err != nil {
+		log.Println(err)
+	}
+	var re = regexp.MustCompile(`current-context.*`)
+	s := re.ReplaceAllString(string(dat), fmt.Sprintf("current-context: %s", name))
+	if err = ioutil.WriteFile(file, []byte(s), 0666); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }
