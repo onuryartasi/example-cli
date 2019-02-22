@@ -19,12 +19,11 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"regexp"
 
-	"github.com/ghodss/yaml"
 	config "github.com/onuryartasi/example-cli/types"
 	"github.com/spf13/cobra"
 	"gopkg.in/AlecAivazis/survey.v1"
+	"gopkg.in/yaml.v2"
 )
 
 var conf config.KubeConfig
@@ -68,8 +67,18 @@ var contextCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 		fmt.Printf("Choose Context: %s", selectedNames)
-		ReplaceContext(selectedNames)
-
+		conf.CurrentContext = selectedNames
+		d, err := yaml.Marshal(&conf)
+		if err != nil {
+			log.Println(err)
+		}
+		fmt.Println(string(d))
+		home := os.Getenv("HOME")
+		file := fmt.Sprintf("%s/.kube/config", home)
+		err = ioutil.WriteFile(file, d, 0666)
+		if err != nil {
+			log.Fatalf("%s", err)
+		}
 	},
 	Aliases: []string{"ctx", "cx"},
 }
@@ -81,19 +90,4 @@ func GetContext() {
 		fmt.Errorf("%s", err)
 	}
 	err = yaml.Unmarshal(dat, &conf)
-}
-
-func ReplaceContext(name string) {
-	home := os.Getenv("HOME")
-	file := fmt.Sprintf("%s/.kube/config", home)
-	dat, err := ioutil.ReadFile(file)
-	if err != nil {
-		log.Println(err)
-	}
-	var re = regexp.MustCompile(`current-context.*`)
-	s := re.ReplaceAllString(string(dat), fmt.Sprintf("current-context: %s", name))
-	if err = ioutil.WriteFile(file, []byte(s), 0666); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
 }
