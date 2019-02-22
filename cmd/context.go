@@ -19,14 +19,15 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 
-	config "github.com/onuryartasi/example-cli/types"
+	types "github.com/onuryartasi/example-cli/types"
 	"github.com/spf13/cobra"
 	"gopkg.in/AlecAivazis/survey.v1"
 	"gopkg.in/yaml.v2"
 )
 
-var conf config.KubeConfig
+var configFile = filepath.Join(os.Getenv("HOME"), ".kube", "config")
 
 func init() {
 	rootCmd.AddCommand(contextCmd)
@@ -48,46 +49,52 @@ var contextCmd = &cobra.Command{
 	Short: "Kubernetes context",
 	Run: func(cmd *cobra.Command, args []string) {
 		GetContext()
-		var names = []string{}
-		for _, value := range conf.Contexts {
-			names = append(names, value.Name)
-		}
-		qs := []*survey.Question{
-			{Name: "context",
-				Prompt: &survey.Select{
-					Message: "Choose a context:",
-					Options: names,
-				},
-				Validate: survey.Required,
-			}}
-		var selectedNames string
-		err := survey.Ask(qs, &selectedNames)
-		fmt.Println(selectedNames)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("Choose Context: %s", selectedNames)
-		conf.CurrentContext = selectedNames
-		d, err := yaml.Marshal(&conf)
-		if err != nil {
-			log.Println(err)
-		}
-		fmt.Println(string(d))
-		home := os.Getenv("HOME")
-		file := fmt.Sprintf("%s/.kube/config", home)
-		err = ioutil.WriteFile(file, d, 0666)
-		if err != nil {
-			log.Fatalf("%s", err)
-		}
+
 	},
 	Aliases: []string{"ctx", "cx"},
 }
 
-func GetContext() {
-	home := os.Getenv("HOME")
-	dat, err := ioutil.ReadFile(fmt.Sprintf("%s/.kube/config", home))
+func ReadConfig() *types.KubeConfig {
+	var conf types.KubeConfig
+	dat, err := ioutil.ReadFile(configFile)
 	if err != nil {
 		fmt.Errorf("%s", err)
 	}
 	err = yaml.Unmarshal(dat, &conf)
+	return &conf
+}
+
+func GetContext() {
+	conf := ReadConfig()
+
+	var names = []string{}
+	for _, value := range conf.Contexts {
+		names = append(names, value.Name)
+	}
+	qs := []*survey.Question{
+		{Name: "context",
+			Prompt: &survey.Select{
+				Message: "Choose a context:",
+				Options: names,
+			},
+			Validate: survey.Required,
+		}}
+	var selectedNames string
+	err := survey.Ask(qs, &selectedNames)
+	if err != nil {
+		log.Fatal(err)
+	}
+	conf.CurrentContext = selectedNames
+	d, err := yaml.Marshal(&conf)
+	if err != nil {
+		log.Println(err)
+	}
+
+	err = ioutil.WriteFile(configFile, d, 0666)
+	if err != nil {
+		log.Fatalf("%s", err)
+	}
+
+	fmt.Printf("Choosed Context: %s", selectedNames)
+
 }
